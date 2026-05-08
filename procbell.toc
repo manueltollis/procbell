@@ -4,6 +4,11 @@
 ## Author: Manuel
 ## Version: @project-version@
 ## SavedVariables: ProcBellDB
+## OptionalDeps: SharedMedia
+
+Libs/LibStub/LibStub.lua
+Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
+Libs/LibSharedMedia-3.0/LibSharedMedia-3.0.lua
 
 Sounds.lua
 procbell.lua

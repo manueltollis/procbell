@@ -14,7 +14,7 @@ end
 
 -- Custom sounds bundled with the addon. Drop more .ogg files into the addon
 -- folder and add another line below to expose them in the picker.
-add("ProcBell (custom)", "file", "Interface\\AddOns\\procbell\\procbell.ogg")
+add("ProcBell", "file", "Interface\\AddOns\\procbell\\procbell.ogg")
 
 -- WoW built-in SoundKits. The sk() helper silently skips any name that
 -- doesn't exist on the current client, so this list is safe to extend.

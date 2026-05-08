@@ -1,15 +1,20 @@
 local addonName, ns = ...
 
+local LSM_TYPE = "sound"
+
+local function lsm()
+    return LibStub and LibStub("LibSharedMedia-3.0", true) or nil
+end
+
 local function loadDB()
     if type(ProcBellDB) ~= "table" then ProcBellDB = {} end
     if type(ProcBellDB.spellBindings) ~= "table" then ProcBellDB.spellBindings = {} end
     if type(ProcBellDB.auraBindings)  ~= "table" then ProcBellDB.auraBindings  = {} end
-    if type(ProcBellDB.customSounds)  ~= "table" then ProcBellDB.customSounds  = {} end
 
     -- First-run seed: bind Ray of Frost to the bundled sound.
     if next(ProcBellDB.spellBindings) == nil and next(ProcBellDB.auraBindings) == nil then
         ProcBellDB.spellBindings[205021] = {
-            name = "ProcBell (custom)",
+            name = "ProcBell",
             kind = "file",
             source = "Interface\\AddOns\\procbell\\procbell.ogg",
         }
@@ -23,7 +28,12 @@ end
 
 function ns.PlayBoundSound(binding)
     if not binding then return end
-    if binding.kind == "file" then
+    if binding.kind == "lsm" then
+        local LSM = lsm()
+        if not LSM then return end
+        local file = LSM:Fetch(LSM_TYPE, binding.source)
+        if file then return PlaySoundFile(file, "Master") end
+    elseif binding.kind == "file" then
         return PlaySoundFile(binding.source, "Master")
     elseif binding.kind == "soundkit" then
         return PlaySound(binding.source, "Master")
@@ -62,46 +72,8 @@ function ns.IterBindings(triggerType)
     return pairs(t or {})
 end
 
--- Custom sounds (user-added, persisted in SavedVariables).
--- A "source" may be a string path or a numeric FileDataID; PlaySoundFile accepts both.
-local function normalizeSource(raw)
-    if type(raw) == "number" then return raw end
-    if type(raw) ~= "string" then return nil end
-    raw = raw:match("^%s*(.-)%s*$") or raw
-    if raw == "" then return nil end
-    local n = tonumber(raw)
-    if n then return n end
-    -- Convenience: bare filename like "meta.ogg" gets prefixed to a sibling
-    -- folder that survives ProcBell updates. The user must create this folder
-    -- themselves; addons can't write to disk. WoW reads any file under
-    -- Interface\AddOns regardless of whether the folder is a registered addon.
-    if not raw:find("[\\/]") then
-        return "Interface\\AddOns\\ProcBell_UserSounds\\" .. raw
-    end
-    return raw
-end
-
-function ns.AddCustomSound(name, rawSource)
-    if type(name) ~= "string" then return false end
-    name = name:match("^%s*(.-)%s*$") or name
-    if name == "" then return false end
-    local source = normalizeSource(rawSource)
-    if source == nil then return false end
-    ProcBellDB.customSounds[#ProcBellDB.customSounds + 1] = { name = name, source = source }
-    return true
-end
-
-function ns.RemoveCustomSound(index)
-    if type(index) == "number" then
-        table.remove(ProcBellDB.customSounds, index)
-    end
-end
-
-function ns.GetCustomSounds()
-    return ProcBellDB and ProcBellDB.customSounds or {}
-end
-
--- Combined list of built-in registry + user custom sounds, used by the picker.
+-- Built-in registry (Sounds.lua) + every sound registered into
+-- LibSharedMedia-3.0 by any other addon (including SharedMedia_MyMedia).
 function ns.GetAllSounds()
     local out = {}
     if ns.sounds then
@@ -109,9 +81,12 @@ function ns.GetAllSounds()
             out[#out + 1] = s
         end
     end
-    if ProcBellDB and ProcBellDB.customSounds then
-        for _, s in ipairs(ProcBellDB.customSounds) do
-            out[#out + 1] = { name = s.name, kind = "file", source = s.source }
+    local LSM = lsm()
+    if LSM then
+        for _, name in ipairs(LSM:List(LSM_TYPE)) do
+            if name ~= "None" then
+                out[#out + 1] = { name = name, kind = "lsm", source = name }
+            end
         end
     end
     return out

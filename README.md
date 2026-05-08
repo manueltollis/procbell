@@ -6,9 +6,9 @@ A small World of Warcraft addon that plays a sound when you cast specific spells
 
 - Play any sound when you successfully cast a spell (e.g. Ray of Frost — spell ID `205021`)
 - Play any sound when an aura newly appears on you (e.g. Vengeance Metamorphosis — spell ID `187827`)
-- Pick from a curated list of WoW built-in SoundKits or your own `.ogg` files
-- Add custom sounds at runtime through the UI — bare filenames like `meta.ogg` are auto-resolved to the addon folder; full paths and numeric FileDataIDs also work
-- Settings persist across sessions per character (saved variables)
+- Pick from a curated list of WoW built-in SoundKits + a bundled custom sound (`procbell.ogg`)
+- Reads the SharedMedia (LibSharedMedia-3.0) sound registry — every sound any other addon registers shows up in the dropdown automatically
+- Settings persist across sessions per character
 
 ## Installation
 
@@ -30,38 +30,35 @@ A small World of Warcraft addon that plays a sound when you cast specific spells
 - `/procbell` (or `/pb`) — open the configuration window
 - **Spell Casts** tab — bind a sound to a spell ID; sound plays on a successful cast
 - **Auras** tab — bind a sound to an aura's spell ID; sound plays when the aura newly appears on you
-- **Custom Sounds...** — register your own `.ogg` files (see below)
-
-### Adding custom sounds
-
-The addon folder gets replaced on every update, so don't drop user files into `Interface\AddOns\procbell\` — they'll vanish next time WowUp updates the addon.
-
-Instead, create a sibling folder once:
-
-```
-World of Warcraft\_retail_\Interface\AddOns\ProcBell_UserSounds\
-```
-
-Drop your `.ogg` files in there. The folder doesn't need a `.toc` file — WoW's `PlaySoundFile` reads any file under `Interface\AddOns` regardless of whether the folder is a registered addon. WowUp won't touch a folder it didn't install, so the files persist across ProcBell updates.
-
-In the **Custom Sounds...** dialog, you can then either:
-- type a bare filename like `meta.ogg` (auto-resolves to that folder), or
-- type a full path like `Interface\AddOns\SomeOther\foo.ogg`, or
-- type a numeric FileDataID (any sound from Wowhead's sound DB)
 
 Find spell/aura IDs on Wowhead — the URL ends in the ID, e.g. `wowhead.com/spell=205021`.
 
+## Adding custom sounds
+
+ProcBell embeds **LibSharedMedia-3.0**. Any sound registered into the LSM "sound" type from any other addon appears in the dropdown automatically — that's WeakAuras, BigWigs, Plater, Details, etc., plus the dedicated user-media addon below.
+
+To add your own `.ogg` files, install **SharedMedia_MyMedia**:
+
+1. Get [SharedMedia](https://www.curseforge.com/wow/addons/shared-media-3-0) and [SharedMedia_MyMedia](https://www.curseforge.com/wow/addons/sharedmedia_mymedia) (any source — CurseForge, Wago, GitHub).
+2. Drop your `.ogg` files into `Interface\AddOns\SharedMedia_MyMedia\sound\` (or wherever the addon expects — its README will say).
+3. Edit `SharedMedia_MyMedia\MyMedia.lua` to register them, e.g.:
+   ```lua
+   LSM:Register("sound", "MyAlert", [[Interface\AddOns\SharedMedia_MyMedia\sound\my-alert.ogg]])
+   ```
+4. `/reload` — the sound now appears in ProcBell's dropdown alongside everything else.
+
+This is the standard ecosystem pattern — once you've registered a sound there, it's also available to WeakAuras, BigWigs, etc.
+
 ## Releasing
 
-Versions are published via GitHub Actions on tag push. The [BigWigs packager](https://github.com/BigWigsMods/packager) builds the zip and a `release.json`, which is what WowUp-CF reads.
+Versions are published via GitHub Actions on tag push. The [BigWigs packager](https://github.com/BigWigsMods/packager) builds the zip, embeds the bundled libraries declared in `.pkgmeta`, and writes a `release.json` that WowUp-CF reads.
 
 ```bash
-# bump ## Version in procbell.toc, commit, then:
-git tag v3.0.0
-git push origin v3.0.0
+git tag v1.0.1
+git push origin v1.0.1
 ```
 
-The `Package and release` workflow runs and creates a GitHub Release with the addon zip attached. No CurseForge / Wago / WoWInterface credentials are required for GitHub-only distribution.
+Or just push to `main` and the auto-tag workflow bumps the patch automatically.
 
 ## License
 
