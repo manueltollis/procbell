@@ -2,7 +2,7 @@
 ## Title: ProcBell
 ## Notes: Plays configurable sounds when you cast spells or gain auras.
 ## Author: Manuel
-## Version: 3.0
+## Version: @project-version@
 ## SavedVariables: ProcBellDB
 
 Sounds.lua

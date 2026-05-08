@@ -1,0 +1,53 @@
+name: Auto-release on push to main
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+# Serialize runs so concurrent pushes don't compete for the same tag.
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute next version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V -r | head -n 1 || true)
+          if [ -z "${latest:-}" ]; then
+            new_version="v3.0.0"
+          else
+            v="${latest#v}"
+            major="${v%%.*}"
+            rest="${v#*.}"
+            minor="${rest%%.*}"
+            patch="${rest#*.}"
+            patch=$((patch + 1))
+            new_version="v${major}.${minor}.${patch}"
+          fi
+          echo "Next version: $new_version"
+          echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        run: |
+          git tag "${{ steps.version.outputs.new_version }}"
+          git push origin "${{ steps.version.outputs.new_version }}"
+
+      - name: Package and release
+        uses: BigWigsMods/packager@v2
+        env:
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
