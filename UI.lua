@@ -11,7 +11,7 @@ local function GetOrCreateRow(parent, index)
     if row then return row end
 
     row = CreateFrame("Frame", nil, parent)
-    row:SetSize(460, 32)
+    row:SetSize(660, 32)
 
     local icon = row:CreateTexture(nil, "ARTWORK")
     icon:SetSize(24, 24)
@@ -36,9 +36,20 @@ local function GetOrCreateRow(parent, index)
     play:SetText("|cffffd200>|r")
     row.play = play
 
+    local vdd = CreateFrame("Frame", "ProcBellVisualDropdown" .. index, row, "UIDropDownMenuTemplate")
+    vdd:SetPoint("LEFT", play, "RIGHT", -8, -2)
+    UIDropDownMenu_SetWidth(vdd, 170)
+    row.vdd = vdd
+
+    local vplay = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+    vplay:SetSize(28, 22)
+    vplay:SetPoint("LEFT", vdd, "RIGHT", -6, 2)
+    vplay:SetText("|cff80c0ff>|r")
+    row.vplay = vplay
+
     local rm = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
     rm:SetSize(28, 22)
-    rm:SetPoint("LEFT", play, "RIGHT", 4, 0)
+    rm:SetPoint("LEFT", vplay, "RIGHT", 4, 0)
     rm:SetText("X")
     row.rm = rm
 
@@ -82,6 +93,40 @@ local function ConfigureRow(row, triggerType, spellID, index)
     row.play:SetScript("OnClick", function()
         ns.PlayBoundSound(ns.GetBinding(row.triggerType, row.spellID))
     end)
+
+    UIDropDownMenu_Initialize(row.vdd, function(_, level)
+        local none = UIDropDownMenu_CreateInfo()
+        none.text = "<none>"
+        local curV = ns.GetVisualBinding(row.triggerType, row.spellID)
+        none.checked = curV == nil
+        none.func = function()
+            ns.SetVisualBinding(row.triggerType, row.spellID, nil)
+            UIDropDownMenu_SetText(row.vdd, "<none>")
+            CloseDropDownMenus()
+        end
+        UIDropDownMenu_AddButton(none, level)
+
+        local all = ns.GetAllVisuals and ns.GetAllVisuals() or ns.visuals or {}
+        for _, v in ipairs(all) do
+            local entry = UIDropDownMenu_CreateInfo()
+            entry.text = v.name
+            entry.checked = curV and curV.source == v.source and curV.kind == v.kind
+            entry.func = function()
+                ns.SetVisualBinding(row.triggerType, row.spellID, v)
+                UIDropDownMenu_SetText(row.vdd, v.name)
+                CloseDropDownMenus()
+            end
+            UIDropDownMenu_AddButton(entry, level)
+        end
+    end)
+
+    local curV = ns.GetVisualBinding(triggerType, spellID)
+    UIDropDownMenu_SetText(row.vdd, curV and curV.name or "<none>")
+
+    row.vplay:SetScript("OnClick", function()
+        ns.PlayBoundVisual(ns.GetVisualBinding(row.triggerType, row.spellID))
+    end)
+
     row.rm:SetScript("OnClick", function()
         ns.RemoveBinding(row.triggerType, row.spellID)
         ns.RefreshUI()
@@ -96,7 +141,7 @@ end
 
 local function BuildFrame()
     local f = CreateFrame("Frame", "ProcBellConfigFrame", UIParent, "BasicFrameTemplateWithInset")
-    f:SetSize(560, 460)
+    f:SetSize(760, 460)
     f:SetPoint("CENTER")
     f:SetMovable(true)
     f:EnableMouse(true)
@@ -130,6 +175,21 @@ local function BuildFrame()
     auraTab:SetPoint("LEFT", castTab, "RIGHT", 4, 0)
     auraTab:SetText("Auras")
     f.auraTab = auraTab
+
+    local moveBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    moveBtn:SetSize(120, 22)
+    moveBtn:SetPoint("TOPRIGHT", -32, -32)
+    moveBtn:SetText("Move Visual")
+    moveBtn:SetScript("OnClick", function(self)
+        if ns.GetMoveMode and ns.GetMoveMode() then
+            ns.SetMoveMode(false)
+            self:SetText("Move Visual")
+        else
+            ns.SetMoveMode(true)
+            self:SetText("Lock Position")
+        end
+    end)
+    f.moveBtn = moveBtn
 
     local hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     hint:SetPoint("TOPLEFT", 16, -64)
@@ -165,7 +225,7 @@ local function BuildFrame()
     scroll:SetPoint("BOTTOMRIGHT", -36, 16)
 
     local content = CreateFrame("Frame", nil, scroll)
-    content:SetSize(470, 360)
+    content:SetSize(670, 360)
     scroll:SetScrollChild(content)
     f.content = content
     f.scroll = scroll

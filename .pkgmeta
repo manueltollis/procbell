@@ -11,3 +11,5 @@ ignore:
     - .pkgmeta
     - README.md
     - .release
+    - anims
+    - scripts

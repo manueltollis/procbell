@@ -1,13 +1,15 @@
 # ProcBell
 
-A small World of Warcraft addon that plays a sound when you cast specific spells or gain specific auras. Useful for proc cues, cooldown alerts, ability reminders, etc.
+A small World of Warcraft addon that plays a sound and/or flashes a texture when you cast specific spells or gain specific auras. Useful for proc cues, cooldown alerts, ability reminders, etc.
 
 ## Features
 
 - Play any sound when you successfully cast a spell (e.g. Ray of Frost — spell ID `205021`)
 - Play any sound when an aura newly appears on you (e.g. Vengeance Metamorphosis — spell ID `187827`)
+- Optionally pulse a texture in the middle of your screen on the same triggers
 - Pick from a curated list of WoW built-in SoundKits + a bundled custom sound (`procbell.ogg`)
-- Reads the SharedMedia (LibSharedMedia-3.0) sound registry — every sound any other addon registers shows up in the dropdown automatically
+- Pick from a curated list of game icons / raid markers, or any LibSharedMedia statusbar/border/background
+- Reads the SharedMedia (LibSharedMedia-3.0) registry for both sounds and textures — anything any other addon registers shows up in the dropdowns automatically
 - Settings persist across sessions per character
 
 ## Installation
@@ -28,8 +30,10 @@ A small World of Warcraft addon that plays a sound when you cast specific spells
 ## Usage
 
 - `/procbell` (or `/pb`) — open the configuration window
-- **Spell Casts** tab — bind a sound to a spell ID; sound plays on a successful cast
-- **Auras** tab — bind a sound to an aura's spell ID; sound plays when the aura newly appears on you
+- **Spell Casts** tab — bind a sound and/or visual to a spell ID; fires on a successful cast
+- **Auras** tab — bind a sound and/or visual to an aura's spell ID; fires when the aura newly appears on you
+
+Each row has two dropdowns: the first picks the sound, the second picks the visual texture. The visual dropdown's `<none>` option leaves the binding sound-only — a binding can have a sound, a visual, or both. The two preview buttons (`>` to the right of each dropdown) trigger the chosen sound or visual independently.
 
 Find spell/aura IDs on Wowhead — the URL ends in the ID, e.g. `wowhead.com/spell=205021`.
 
@@ -72,6 +76,53 @@ If a sound isn't showing up, run this in chat to dump everything LSM has registe
 ```
 
 If your sound's name isn't in the printed list, it didn't register — re-run the .bat or fix the line in `MyMedia.lua`. If it *is* in the list but missing from ProcBell's dropdown, that's a ProcBell bug — open an issue.
+
+## Adding custom visuals
+
+The same logic applies to textures: ProcBell never owns user-supplied art (the addon folder gets wiped on update). Instead, drop your image into SharedMedia_MyMedia and ProcBell picks it up via LSM.
+
+A few format constraints WoW imposes:
+
+- **`.tga` or `.blp` only.** PNG and JPG are *not* loaded by the client. TGA is the easy path — every image editor exports it. BLP is Blizzard's compressed format; convert with a tool like BLPConverter if you care about file size.
+- **Power-of-two dimensions.** 32, 64, 128, 256, 512, 1024 — on both axes. Non-power-of-two textures either render mangled or not at all. 256×256 is a good default for a screen-center pulse.
+- **Transparent backgrounds work.** TGA supports a true alpha channel; the renderer respects it.
+
+### Step by step
+
+1. Install **SharedMedia** and **SharedMedia_MyMedia** as described in [Adding custom sounds](#adding-custom-sounds) above.
+2. Drop your `.tga` (or `.blp`) into one of:
+   ```
+   World of Warcraft\_retail_\Interface\AddOns\SharedMedia_MyMedia\statusbar\
+   World of Warcraft\_retail_\Interface\AddOns\SharedMedia_MyMedia\border\
+   World of Warcraft\_retail_\Interface\AddOns\SharedMedia_MyMedia\background\
+   ```
+   Any of these three folders works — ProcBell reads all of them. Use whichever fits the image's intent (`statusbar` is the catch-all for arbitrary images).
+3. **Register the file with LSM** (same as for sounds — dropping the file isn't enough). Either run the `.bat` script that ships with SharedMedia_MyMedia, or add a line to `MyMedia.lua` by hand:
+   ```lua
+   LSM:Register("statusbar", "MyProcGlow", [[Interface\AddOns\SharedMedia_MyMedia\statusbar\my-proc-glow.tga]])
+   ```
+   First arg matches the folder you used (`"statusbar"`, `"border"`, or `"background"`). Second arg is the display name. Third arg is the full path.
+4. `/reload` in-game. The texture appears in ProcBell's visual dropdown (suffixed with the LSM type, e.g. `MyProcGlow (statusbar)`), and in every other LSM-aware addon.
+
+### Bundling textures inside ProcBell itself
+
+If you want a texture to ship *with* ProcBell (so it's there before any other addon loads), drop the `.tga` into the `procbell\` folder and add a line to `Visuals.lua`:
+
+```lua
+add("My Pulse", "file", "Interface\\AddOns\\procbell\\my-pulse.tga")
+```
+
+Same caveat as for bundled sounds: this gets overwritten on every update, so a fork or local-only build is the only way to keep it. For your own custom art, SharedMedia_MyMedia is the right home.
+
+### Verifying
+
+Same trick as sounds — dump everything LSM has registered for a given type:
+
+```
+/run for _, n in ipairs(LibStub("LibSharedMedia-3.0"):List("statusbar")) do print(n) end
+```
+
+Repeat with `"border"` and `"background"` if your file is in one of those folders. If your name isn't in the list, the registration didn't take. If it *is* but doesn't appear in ProcBell's dropdown, that's a bug.
 
 ## Releasing
 
