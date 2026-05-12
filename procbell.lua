@@ -48,6 +48,10 @@ function ns.PlayBoundSound(binding)
 end
 
 function ns.GetBinding(triggerType, spellID)
+    -- Forbidden auras (e.g. some PvP/system auras) deliver tainted `spellId`
+    -- values that error with "cannot be indexed with secret keys" if used
+    -- as a table key. Real spell IDs are always numbers, so gate on that.
+    if type(spellID) ~= "number" then return nil end
     local t = bindingTable(triggerType)
     return t and t[spellID] or nil
 end
